@@ -75,6 +75,8 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
     valid_accuracy_per_epoch = []
     svm_accuracies_per_epoch = []
     feature_indexes_per_epoch = []
+    hit_rate_per_epoch = []
+    best_valid_accuracy = -1 # initialize the best validation accuracy
 
     # generate the sparse network
     model.to(args.device)
@@ -93,13 +95,12 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
             loss = loss_function(y_hat, y)
 
             # backpropagate, get the gradient info we want, and update the network's weights
-            model.ac_grad = [] # clean the gradient from last batch
             loss.backward() # backpropagate
-            model.ac_grad.append(torch.mean(torch.abs(x.grad), dim=0)) # get the gradient of loss with every activation
+            grad = torch.mean(torch.abs(x.grad), dim=0) # get the gradient of loss with every input neuron
             optimizer.step() # do the optimization
 
             # update the neuron importance score for all network
-            dst_algorithm.update_importance_scores(model.ac_grad)
+            dst_algorithm.update_importance_scores(grad)
 
             # check if we update mask every batch
             if args.batch_update:
@@ -123,13 +124,25 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
             epoch_idx+1, loss_per_epoch[-1], valid_accuracy)
         logger.info(info)
 
+                # if the current model have the best valid accuracy, we save the model
+        if valid_accuracy > best_valid_accuracy:
+            torch.save({
+                'mask': dst_algorithm.masks,
+                'model_state_dict': model.state_dict(),
+            }, args.models_path)
+
         # select k features and use svm to test it to see how neuron importance works after every epoch
         svm_accuracies, features_indexes = dst_algorithm.select_features()
+        if args.dataset == 'artificial':
+            rate = dst_algorithm.hit_rate()
+            hit_rate_per_epoch.append(rate)
+        else:
+            hit_rate_per_epoch.append(0)
         svm_accuracies_per_epoch.append(svm_accuracies)
         feature_indexes_per_epoch.append(features_indexes)
 
     # return data
-    return loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch
+    return loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch
 
 # function shows setup and start training for one time
 def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model):
@@ -144,7 +157,7 @@ def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model
     dst_algorithm = DST(mlp, args, logger, svm_model)
 
     # start training
-    loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch = train(mlp, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger)
+    loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch = train(mlp, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger)
 
     # get the test accuracy of the model
     test_accuracy = evaluate_mlp(mlp, test_loader, args.device, args.num_testing)
@@ -153,7 +166,7 @@ def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model
     logger.info('Test accuracy of the network: {}'.format(test_accuracy))
 
     # return this training's result
-    return loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch
+    return loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch
 
 # main function, we repeat training several times here to get average results and save it
 def main():
@@ -168,14 +181,6 @@ def main():
     # make the k in k_list be in order
     args.k_list.sort()
 
-
-    # make dir for logs, results and models and get prefix
-    logs_path, results_path = create_dir(args)
-
-    # make prefix or filename for the data to save
-    args.logs_name = '{}/{}.log'.format(logs_path, args.network)
-    args.results_name = '{}/{}.json'.format(results_path, args.network)
-    
     # get dataset
     if args.dataset == 'artificial':
         x_train, y_train, x_valid, y_valid, x_test, y_test = get_artificial_data(args)
@@ -194,6 +199,14 @@ def main():
     validation_loader = DataLoader(Dataset(x_valid, y_valid), batch_size=args.evaluating_batch_size)
     test_loader = DataLoader(Dataset(x_test, y_test), batch_size=args.evaluating_batch_size)
 
+    # make dir for logs, results and models and get prefix
+    logs_path, results_path, models_path = create_dir(args)
+
+    # make prefix or filename for the data to save
+    args.logs_name = '{}/{}.log'.format(logs_path, args.network)
+    args.results_name = '{}/{}.json'.format(results_path, args.network)
+    args.models_path = '{}/{}.pt'.format(models_path, args.network)
+
     # get logger
     logger = setup_logger(args)
 
@@ -205,6 +218,7 @@ def main():
     avr_valid_accuracy_per_epoch = None
     avr_test_accuracy = 0
     avr_svm_accuracies_per_epoch = None
+    avr_hit_rate_per_epoch = None
     
     # repeat the training process for certain times to get average results
     for repeat_idx in range(args.repeat):
@@ -216,16 +230,19 @@ def main():
             seed_everything(args.seeds[repeat_idx])
         
         # start the training
-        loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model)
+        loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model)
         
         if repeat_idx == 0 :
             avr_loss_per_epoch = np.array(loss_per_epoch)
             avr_valid_accuracy_per_epoch = np.array(valid_accuracy_per_epoch)
             avr_svm_accuracies_per_epoch = np.stack(svm_accuracies_per_epoch)
+            avr_hit_rate_per_epoch = np.array(hit_rate_per_epoch)
         else:
             avr_loss_per_epoch += np.array(loss_per_epoch)
             avr_valid_accuracy_per_epoch += np.array(valid_accuracy_per_epoch)
             avr_svm_accuracies_per_epoch += np.stack(svm_accuracies_per_epoch)
+            avr_hit_rate_per_epoch += np.array(hit_rate_per_epoch)
+
 
         avr_test_accuracy += test_accuracy
 
@@ -235,7 +252,7 @@ def main():
     avr_valid_accuracy_per_epoch = (avr_valid_accuracy_per_epoch/args.repeat).tolist()
     avr_svm_accuracies_per_epoch = (avr_svm_accuracies_per_epoch/args.repeat).tolist()
     avr_test_accuracy = avr_test_accuracy/args.repeat
-
+    avr_hit_rate_per_epoch = (avr_hit_rate_per_epoch/args.repeat).tolist()
 
     # save the results as json file
     json_data = {
@@ -243,14 +260,16 @@ def main():
             'dataset' : args.dataset,
             'epsilon' : args.epsilon,
             'network' : args.network,
-            'k_list' : args.k_list
+            'k_list' : args.k_list,
+            'num_training' : args.num_training
         },
         'results': {
             'svm_accuracies_per_epoch': svm_accuracies_per_epoch,
             'feature_indexes_per_epoch': feature_indexes_per_epoch,
             'loss_per_epoch': avr_loss_per_epoch,
             'valid_accuracy_per_epoch': avr_valid_accuracy_per_epoch,
-            'test_accuracy': avr_test_accuracy
+            'test_accuracy': avr_test_accuracy,
+            'avr_hit_rate_per_epoch': avr_hit_rate_per_epoch
         }
     }
     json_object = json.dumps(json_data)

@@ -22,9 +22,8 @@ class DST():
         self.initialize_mask() # initialize the 0-1 masks with ER random graph
 
         # argument for calculating and storing neruon importance scores.
-        self.beta = args.beta # it tells us how many previous neuron importance scores we should take into account
-        self.importance_scores = {} # importance scores of every neurons, it's a dict of tensor and organized layer by layer (tensor)
-        self.initialize_importance_scores()
+        self.importance_scores = self.initialize_importance_scores() # tensor of importance scores of every input neurons
+        
 
         # list of number of features we want to use, and evalueate the neuron importance scores
         self.k_list = args.k_list
@@ -69,7 +68,7 @@ class DST():
         self.logger.info(info)
 
     def update_mask(self):
-        if self.network == 'set':
+        if self.network == 'sparse':
             self.magnitude_removal()
             self.random_addition()
             self.logger.info('Updating the sparse neural network topology')
@@ -129,29 +128,16 @@ class DST():
             
     # calculation of neuron importance
     def initialize_importance_scores(self):
-        # layer by layer initialize neuron importance to 0, and importance neuron list to empty
-        for name, param in self.model.named_parameters():
-            if param.requires_grad:
-                if len(param.shape) > 1:
-                    self.importance_scores[name] = torch.zeros(param.shape[1]).float().to(self.device)
-        self.logger.info('successfully initialize neuron importance scores for every neuron.')
+        self.logger.info('successfully initialize neuron importance scores for every input neurons.')
+        return torch.zeros(self.model.input_dim).float().to(self.device)
         
-    def update_importance_scores(self, ac_grad):
-        # ac_grad give a list of tensor
-        # the tensor saves grad info for every neruon in a layer
-        # and stack all tensors in a list using order from last hidden layer to input layer
-        # so also use iterate model's layer name from back to front
-        idx = 0 
-        for name, _ in reversed(list(self.model.named_parameters())):
-            if name in self.importance_scores:
-                previous_importance_scores = self.importance_scores[name] * self.beta
-                self.importance_scores[name] = previous_importance_scores + ac_grad[idx]
-                idx += 1
+    def update_importance_scores(self, grad):
+        self.importance_scores = self.importance_scores + grad
 
     # evaluate the neuron importance scores by selecting features
     def select_features(self):
         svm_accuracies = []
-        _, indexes = torch.topk(self.importance_scores['fc1.weight'], dim=0, k=self.k_list[-1], largest=True)
+        _, indexes = torch.topk(self.importance_scores, dim=0, k=self.k_list[-1], largest=True)
         indexes = indexes.tolist()
         for k in self.k_list:
             # get the indexes of the input neuron with the largest neuron importance scores
@@ -164,3 +150,13 @@ class DST():
             self.logger.info(info)
         # return the accuracies for every k features in svm, and the longest inforamtive indexes
         return svm_accuracies, indexes
+
+    # evaluate the neuron importance scores by selecting features
+    def hit_rate(self):
+        k = self.k_list[-1]
+        _, indexes = torch.topk(self.importance_scores, dim=0, k=k, largest=True)
+        hit = len(set(indexes.tolist()).intersection(range(k)))
+        rate = hit/k
+        info = 'The hit rate of artificial data set is {} in {} network'.format(rate, self.network)
+        self.logger.info(info)
+        return rate

@@ -62,33 +62,6 @@ def load_mnist():
 
     return x_train, y_train, x_valid, y_valid, x_test, y_test
 
-
-def load_cifar100():
-    (x_train, y_train), (x_test, y_test) = cifar100.load_data()
-
-    # Normalize data
-    x_train = x_train / 255.
-    x_test = x_test / 255.
-    x_train = x_train.astype('float32')
-    x_test = x_test.astype('float32')
-
-    # reshape the data
-    x_train = x_train.reshape(x_train.shape[0], x_train.shape[1] * x_train.shape[2])
-    x_test = x_test.reshape(x_test.shape[0], x_test.shape[1] * x_test.shape[2])
-
-    # turn the label to one-hot
-    y_train = np_utils.to_categorical(y_train, 10)
-    y_test = np_utils.to_categorical(y_test, 10)
-
-    # split 10% from training dataset to validation dataset
-    x_valid = x_train[:6000]
-    y_valid = y_train[:6000]
-    x_train = x_train[6000:]
-    y_train = y_train[6000:]
-
-    return x_train, y_train, x_valid, y_valid, x_test, y_test
-
-
 def load_madelon():
     # get data via url
     train_data_url = 'https://archive.ics.uci.edu/ml/machine-learning-databases/madelon/MADELON/madelon_train.data'
@@ -124,7 +97,6 @@ def load_madelon():
     train_y = train_y[:1800]
 
     return train_x, train_y, valid_x, valid_y, test_x, test_y
-
 
 def load_mat(filename, num_datapoint, num_class):
     # read data from file
@@ -182,43 +154,79 @@ def get_artificial_data(args):
 
 # function for selecting dataset
 def get_dataset(dataset_name):
-# large sample size dataset
-    # image dataset
+
+# mnist
     if dataset_name == 'mnist':
-        return load_mnist() # digit
-    elif dataset_name == 'coil20':
-        return load_mat('./datasets/COIL20.mat', 1440, 20) # face
-    elif dataset_name == 'usps':
-        return load_mat('./datasets/USPS.mat', 9298, 10) # hand-written
-    elif dataset_name == 'gisette':
-        return load_mat('./datasets/gisette.mat', 7000, 2) # digit
-    # text dataset
+        return load_mnist()
+
+# text dataset
     elif dataset_name == 'basehock':
         return load_mat('./datasets/BASEHOCK.mat', 1993, 2)
     elif dataset_name == 'pcmac':
-        return load_mat('.datasets/PCMAC.mar', 1943, 2)
+        return load_mat('.datasets/PCMAC.mat', 1943, 2)
     elif dataset_name == 'relathe':
         return load_mat('./datasets/RELATHE.mat', 1427, 2)
+
+# face image data
+    elif dataset_name == 'coil20':
+        return load_mat('./datasets/COIL20.mat', 1440, 20)
+    elif dataset_name == 'orl':
+        return load_mat('./datasets/ORL.mat', 400, 40)
+    elif dataset_name == 'orlraws':
+        return load_mat('./datasets/orlraws10P.mat', 100, 10)
+    elif dataset_name == 'warpar':
+        return load_mat('./datasets/warpAR10P.mat', 130, 10)
+    elif dataset_name == 'warppie':
+        return load_mat('./datasets/warpPIE10P.mat', 210, 10)
+    elif dataset_name == 'yale':
+        return load_mat('./datasets/Yale.mat', 165, 15)
+
+    # hand-written image
+    elif dataset_name == 'usps':
+        return load_mat('./datasets/USPS.mat', 9298, 10) 
+    
+    # biological data
+    elif dataset_name == 'allaml':
+        return load_mat('./datasets/ALLAML.mat', 72, 2)
+    elif dataset_name == 'carcinom':
+        return load_mat('./datasets/CARCINOM.mat', 174, 11)
+    elif dataset_name == 'cll_sub':
+        return load_mat('./datasets/CLL_SUB_111.mat', 111, 3)
+    elif dataset_name == 'colon':
+        return load_mat('./datasets/colon.mat', 62, 2)
+    elif dataset_name == 'gli':
+        return load_mat('./datasets/GLI_85.mat', 85, 2)
+    elif dataset_name == 'glioma':
+        return load_mat('./datasets/GLIOMA.mat', 50, 4)
+    elif dataset_name == 'leukemia':
+        return load_mat('./datasets/leukemia.mat', 72, 2)
+    elif dataset_name == 'lung':
+        return load_mat('./datasets/lung.mat', 203, 5)
+    elif dataset_name == 'lung_discrete':
+        return load_mat('./datasets/lung_discrete.mat', 73, 7)
+    elif dataset_name == 'lymphoma':
+        return load_mat('./datasets/lymphoma.mat', 96, 9)
+    elif dataset_name == 'nci9':
+        return load_mat('./datasets/nci9.mat', 60, 9)
+    elif dataset_name == 'prostate_ge':
+        return load_mat('./datasets/Prostate_GE.mat', 102, 2)
+    elif dataset_name == 'smk_can':
+        return load_mat('./datasets/SMK_CAN_187.mat', 187, 2)
+    elif dataset_name == 'tox':
+        return load_mat('./datasets/TOX_171.mat', 171, 4)
+    
+    # other data
+    elif dataset_name == 'arcene':
+        return load_mat('./datasets/arcene.mat', 200, 2)
+    elif dataset_name == 'gisette':
+        return load_mat('./datasets/gisette.mat', 7000, 2) 
     # speech dataset
     elif dataset_name == 'isolet':
         return load_mat('./datasets/Isolet.mat', 1560, 26)
     # artificial dataset
     elif dataset_name == 'madelon':
-        return load_mat('./datasets/madelon.mat', 2600, 26)
-
-# small sample size dataset
-    # image dataset
-    elif dataset_name == 'orlraws':
-        return load_mat('./datasets/orlraws10P', 100, 10)
-
-    # biological dataset
-    elif dataset_name == 'carcinom':
-        return load_mat('./datasets/CARCINOM.mat', 174, 11)
-    elif dataset_name == 'smk':
-        return load_mat('./datasets/SMK_CAN_187.mat', 187, 2)
-    elif dataset_name == 'cll':
-        return load_mat('./datasets/CLL_SUB_111.mat', 111, 3)
-
+        return load_madelon()
+        
     else:
         print('can not find the corresponding dataset.')
         sys.exit()
