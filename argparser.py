@@ -31,8 +31,7 @@ def get_parser():
     parser.add_argument('--repeat', type=int, default=5, help='The number of experiment (default: 5).')
 
     # argument for generating artificial noisy data 
-    # TODO: change the help
-    parser.add_argument('--n_classes', type=int, default=10, help='The number of classes (or labels) of the classification problem (default: 10).')
+    parser.add_argument('--n_classes', type=int, default=2, help='The number of classes (or labels) of the classification problem (default: 2).')
     parser.add_argument('--n_samples', type=int, default=1000, help='The number of samples (default: 1000).')
     parser.add_argument('--n_features', type=int, default=500, help='The total number of features (default: 500).')
     parser.add_argument('--n_informative', type=int, default=5, help='The number of informative features (default: 5).')

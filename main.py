@@ -16,6 +16,7 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import json
 import numpy as np
+import math
 
 from SVM_Model import SVM_Model
 
@@ -82,10 +83,10 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
     model.to(args.device)
     dst_algorithm.apply_mask()
 
-    for epoch_idx in range(0, args.epoch):
+    for epoch_idx in range(1, args.epoch+1):
         # start training
         model.train()
-        for x, y in train_loader:
+        for batch_idx, (x, y) in enumerate(train_loader, start=1):
             x, y = x.to(args.device), y.to(args.device)
             x.requires_grad = True
 
@@ -104,13 +105,13 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
 
             # check if we update mask every batch
             if args.batch_update:
-                dst_algorithm.update_mask()
+                dst_algorithm.update_mask(epoch_idx, batch_idx)
             # for all dst algorithm, even we don't update the mask, after backprop we still need to apply mask
             dst_algorithm.apply_mask()
         
         # if the update frequency is not after every batch, we update it after every epoch
         if not args.batch_update:
-            dst_algorithm.update_mask()
+            dst_algorithm.update_mask(epoch_idx, batch_idx)
         # for all dst algorithm, even we don't update the mask, after backprop we still need to apply mask
         dst_algorithm.apply_mask()
 
@@ -121,13 +122,13 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
         valid_accuracy_per_epoch.append(valid_accuracy)
         # also log the results and show it in console
         info = 'Epoch {} Loss: {:.6f} Validation Accuracy: {:.6f}'.format(
-            epoch_idx+1, loss_per_epoch[-1], valid_accuracy)
+            epoch_idx, loss_per_epoch[-1], valid_accuracy)
         logger.info(info)
 
                 # if the current model have the best valid accuracy, we save the model
         if valid_accuracy > best_valid_accuracy:
             torch.save({
-                'neuron_imprtance': dst_algorithm.importance_scores,
+                'neuron_importance': dst_algorithm.importance_scores,
                 'mask': dst_algorithm.masks,
                 'model_state_dict': model.state_dict()
             }, args.models_path)
@@ -187,6 +188,10 @@ def main():
         x_train, y_train, x_valid, y_valid, x_test, y_test = get_artificial_data(args)
     else:
         x_train, y_train, x_valid, y_valid, x_test, y_test = get_dataset(args.dataset)
+    # make data loader
+    train_loader = DataLoader(Dataset(x_train, y_train), batch_size=args.training_batch_size)
+    validation_loader = DataLoader(Dataset(x_valid, y_valid), batch_size=args.evaluating_batch_size)
+    test_loader = DataLoader(Dataset(x_test, y_test), batch_size=args.evaluating_batch_size)
 
     # get model's dimension and number of samples from data
     args.input_dim = x_train.shape[1]
@@ -194,11 +199,7 @@ def main():
     args.num_training = x_train.shape[0]
     args.num_validation = x_valid.shape[0]
     args.num_testing = x_test.shape[0]
-
-    # make data loader
-    train_loader = DataLoader(Dataset(x_train, y_train), batch_size=args.training_batch_size)
-    validation_loader = DataLoader(Dataset(x_valid, y_valid), batch_size=args.evaluating_batch_size)
-    test_loader = DataLoader(Dataset(x_test, y_test), batch_size=args.evaluating_batch_size)
+    args.batch = math.ceil(args.num_training / args.training_batch_size)
 
     # make dir for logs, results and models and get prefix
     logs_path, results_path, models_path = create_dir(args)

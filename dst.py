@@ -11,7 +11,11 @@ class DST():
         self.device = args.device
 
         # the network we chose
-        self.network = args.network 
+        self.network = args.network
+
+        # the training setting
+        self.batch = args.batch
+        self.epoch = args.epoch
 
         # arguments for generating sparse network, and store the setting
         self.epsilon = args.epsilon # epsilon use to control the sparsity level P(W_n) = epsilon(n+n_prv)/(n*n_prv)
@@ -67,11 +71,16 @@ class DST():
             num_params_dense, num_params_sparse, overall_density, 1 - overall_density)
         self.logger.info(info)
 
-    def update_mask(self):
+    def update_mask(self, epoch_idx, batch_idx):
         if self.network == 'sparse':
             self.magnitude_removal()
-            self.random_addition()
+            if epoch_idx == self.epoch and batch_idx == self.batch:
+                self.logger.info('Stop random regrow in the last batch {} of the last epoch {}'.format(epoch_idx, batch_idx))
+            else:
+                self.random_addition()
             self.logger.info('Updating the sparse neural network topology')
+                    
+            
 
     def apply_mask(self):
         # apply masks layer by layer to model's weight matrix
