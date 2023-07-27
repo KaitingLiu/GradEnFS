@@ -127,8 +127,9 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
                 # if the current model have the best valid accuracy, we save the model
         if valid_accuracy > best_valid_accuracy:
             torch.save({
+                'neuron_imprtance': dst_algorithm.importance_scores,
                 'mask': dst_algorithm.masks,
-                'model_state_dict': model.state_dict(),
+                'model_state_dict': model.state_dict()
             }, args.models_path)
 
         # select k features and use svm to test it to see how neuron importance works after every epoch

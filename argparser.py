@@ -12,7 +12,7 @@ def get_parser():
     parser.add_argument('--hidden_dim', type=int, default=1000, help='Number of hidden neuron (default: 1000).')
 
     # argument for training
-    parser.add_argument('--epoch', type=int, default=100, help='The number of training epoch (default: 200).')
+    parser.add_argument('--epoch', type=int, default=100, help='The number of training epoch (default: 100).')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate (default: 0.01).')
     parser.add_argument('--device', type=str, default='cpu', help='The device of running the program. (default:cpu, option: cup, cuda)')
 
@@ -23,9 +23,6 @@ def get_parser():
     parser.add_argument('--batch_update', action='store_true', help='Choose to update topology after every batch.')
     parser.add_argument('--use_seeds', action='store_true', help='Choose to control random seeds in pytorch.')
     parser.add_argument('--seeds', type=int, action='store', nargs='*', default=[0, 1, 2, 3, 4], help='The list of seed for repeating experiment, use to control the generation of initial sparse network.')
-
-    # argument for neuron importance metric
-    # parser.add_argument('--beta', type=float, default=1, help='Hyperparameter of neuron importance metric, control how many previous importance score should be taken into account (default: 1).')
     
     # argument for feature selection
     parser.add_argument('--k_list', type=int, action='store', nargs='*', default=[20], help='The list of the numbers of the selected features.')
