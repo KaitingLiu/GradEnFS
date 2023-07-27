@@ -70,7 +70,7 @@ def evaluate_mlp(model, data_loader, device, num_dataset):
     return accuracy
 
 # function shows how to train the model
-def train(model, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger):
+def train(model, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger, repeat_idx):
     # data saved for analysis
     loss_per_epoch = []
     valid_accuracy_per_epoch = []
@@ -125,13 +125,15 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
             epoch_idx, loss_per_epoch[-1], valid_accuracy)
         logger.info(info)
 
-                # if the current model have the best valid accuracy, we save the model
-        if valid_accuracy > best_valid_accuracy:
+        # if the current model have the best valid accuracy, we save the model
+        # not the last comment, but now we only save the final trained model
+        if epoch_idx == args.epoch:
+            filename = '{}/{}.pt'.format(args.models_path, repeat_idx)
             torch.save({
                 'neuron_importance': dst_algorithm.importance_scores,
                 'mask': dst_algorithm.masks,
                 'model_state_dict': model.state_dict()
-            }, args.models_path)
+            }, filename)
 
         # select k features and use svm to test it to see how neuron importance works after every epoch
         svm_accuracies, features_indexes = dst_algorithm.select_features()
@@ -147,7 +149,7 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
     return loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch
 
 # function shows setup and start training for one time
-def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model):
+def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model, repeat_idx):
     # get model
     mlp = MLP(args.input_dim, args.hidden_dim, args.output_dim)
 
@@ -159,7 +161,7 @@ def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model
     dst_algorithm = DST(mlp, args, logger, svm_model)
 
     # start training
-    loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch = train(mlp, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger)
+    loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch = train(mlp, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger, repeat_idx)
 
     # get the test accuracy of the model
     test_accuracy = evaluate_mlp(mlp, test_loader, args.device, args.num_testing)
@@ -202,12 +204,7 @@ def main():
     args.batch = math.ceil(args.num_training / args.training_batch_size)
 
     # make dir for logs, results and models and get prefix
-    logs_path, results_path, models_path = create_dir(args)
-
-    # make prefix or filename for the data to save
-    args.logs_name = '{}/{}.log'.format(logs_path, args.network)
-    args.results_name = '{}/{}.json'.format(results_path, args.network)
-    args.models_path = '{}/{}.pt'.format(models_path, args.network)
+    args.logs_name, args.results_name, args.models_path = create_dir(args)
 
     # get logger
     logger = setup_logger(args)
@@ -232,7 +229,7 @@ def main():
             seed_everything(args.seeds[repeat_idx])
         
         # start the training
-        loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model)
+        loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model, repeat_idx)
         
         if repeat_idx == 0 :
             avr_loss_per_epoch = np.array(loss_per_epoch)
