@@ -144,9 +144,9 @@ class DST():
         self.importance_scores = self.importance_scores + grad
 
     # evaluate the neuron importance scores by selecting features
-    def select_features(self):
+    def select_features(self, importance_scores):
         svm_accuracies = []
-        _, indexes = torch.topk(self.importance_scores, dim=0, k=self.k_list[-1], largest=True)
+        _, indexes = torch.topk(importance_scores, dim=0, k=self.k_list[-1], largest=True)
         indexes = indexes.tolist()
         for k in self.k_list:
             # get the indexes of the input neuron with the largest neuron importance scores
@@ -161,11 +161,22 @@ class DST():
         return svm_accuracies, indexes
 
     # evaluate the neuron importance scores by selecting features
-    def hit_rate(self):
+    def hit_rate(self, importance_scores):
         k = self.k_list[-1]
-        _, indexes = torch.topk(self.importance_scores, dim=0, k=k, largest=True)
+        _, indexes = torch.topk(importance_scores, dim=0, k=k, largest=True)
         hit = len(set(indexes.tolist()).intersection(range(k)))
         rate = hit/k
         info = 'The hit rate of artificial data set is {} in {} network'.format(rate, self.network)
         self.logger.info(info)
         return rate
+    
+    # QS implementation
+    def QS_importance_scores(self):
+        # summation of the weight magnitude of the input layer as the neuron importance for QS algorithm
+        QS_importance_scores = None
+        for _, param in self.model.named_parameters():
+            if param.requires_grad:
+                if len(param.shape) > 1:
+                    QS_importance_scores = torch.sum(torch.abs(param.data), dim=0)
+                    break
+        return QS_importance_scores

@@ -72,12 +72,19 @@ def evaluate_mlp(model, data_loader, device, num_dataset):
 # function shows how to train the model
 def train(model, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger, repeat_idx):
     # data saved for analysis
+    # proposed dynamic method
     loss_per_epoch = []
     valid_accuracy_per_epoch = []
     svm_accuracies_per_epoch = []
     feature_indexes_per_epoch = []
     hit_rate_per_epoch = []
-    best_valid_accuracy = -1 # initialize the best validation accuracy
+    # static mehtod
+    static_importance_scores = torch.zeros(model.input_dim).float().to(args.device)
+    # QS method
+    QS_svm_accuracies_per_epoch = []
+    QS_feature_indexes_per_epoch = []
+    QS_hit_rate_per_epoch = []
+
 
     # generate the sparse network
     model.to(args.device)
@@ -126,27 +133,36 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, dst_
         logger.info(info)
 
         # if the current model have the best valid accuracy, we save the model
-        # not the last comment, but now we only save the final trained model
+        if epoch_idx == args.epoch-1:
+            static_importance_scores = dst_algorithm.importance_scores
         if epoch_idx == args.epoch:
-            filename = '{}/{}.pt'.format(args.models_path, repeat_idx)
-            torch.save({
-                'neuron_importance': dst_algorithm.importance_scores,
-                'mask': dst_algorithm.masks,
-                'model_state_dict': model.state_dict()
-            }, filename)
+            static_importance_scores = dst_algorithm.importance_scores - static_importance_scores
 
         # select k features and use svm to test it to see how neuron importance works after every epoch
-        svm_accuracies, features_indexes = dst_algorithm.select_features()
+        logger.info('Statistic of the proposed dynamic method:')
+        svm_accuracies, features_indexes = dst_algorithm.select_features(dst_algorithm.importance_scores)
         if args.dataset == 'artificial':
-            rate = dst_algorithm.hit_rate()
+            rate = dst_algorithm.hit_rate(dst_algorithm.importance_scores)
             hit_rate_per_epoch.append(rate)
         else:
             hit_rate_per_epoch.append(0)
         svm_accuracies_per_epoch.append(svm_accuracies)
         feature_indexes_per_epoch.append(features_indexes)
 
+        # also save the same data for QS method
+        logger.info('Statistic of the QS method:')
+        QS_importance_scores = dst_algorithm.QS_importance_scores()
+        svm_accuracies, features_indexes = dst_algorithm.select_features(QS_importance_scores)
+        if args.dataset == 'artificial':
+            rate = dst_algorithm.hit_rate(QS_importance_scores)
+            QS_hit_rate_per_epoch.append(rate)
+        else:
+            QS_hit_rate_per_epoch.append(0)
+        QS_svm_accuracies_per_epoch.append(svm_accuracies)
+        QS_feature_indexes_per_epoch.append(features_indexes)
+
     # return data
-    return loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch
+    return loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch, static_importance_scores, QS_svm_accuracies_per_epoch, QS_feature_indexes_per_epoch, QS_hit_rate_per_epoch
 
 # function shows setup and start training for one time
 def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model, repeat_idx):
@@ -161,16 +177,21 @@ def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model
     dst_algorithm = DST(mlp, args, logger, svm_model)
 
     # start training
-    loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch = train(mlp, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger, repeat_idx)
+    loss_per_epoch, valid_accuracy_per_epoch, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch, static_importance_scores, QS_svm_accuracies_per_epoch, QS_feature_indexes_per_epoch, QS_hit_rate_per_epoch = train(mlp, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger, repeat_idx)
 
-    # get the test accuracy of the model
+    # get the test accuracy, svm accuracies, hit rate of the final model
+    logger.info('Statistic of the final network and static method:')
     test_accuracy = evaluate_mlp(mlp, test_loader, args.device, args.num_testing)
-
+    static_svm_accuracies, _ = dst_algorithm.select_features(static_importance_scores)
+    static_hit_rate = 0
+    if args.dataset == 'artificial':
+        static_hit_rate = dst_algorithm.hit_rate(static_importance_scores)
     # log the test accuracy
     logger.info('Test accuracy of the network: {}'.format(test_accuracy))
 
+
     # return this training's result
-    return loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch
+    return loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch, dst_algorithm.importance_scores, static_svm_accuracies, static_hit_rate, static_importance_scores, QS_svm_accuracies_per_epoch, QS_feature_indexes_per_epoch, QS_hit_rate_per_epoch, dst_algorithm.QS_importance_scores()
 
 # main function, we repeat training several times here to get average results and save it
 def main():
@@ -213,11 +234,21 @@ def main():
     svm_model = SVM_Model(x_train, y_train, x_test, y_test)
 
     # average result for multiple seed (multiple times of training)
+    # proposed dynamic method
     avr_loss_per_epoch = None
     avr_valid_accuracy_per_epoch = None
     avr_test_accuracy = 0
     avr_svm_accuracies_per_epoch = None
     avr_hit_rate_per_epoch = None
+    avr_dynamic_importance_scores = None
+    # static method
+    avr_static_svm_accuracies = None
+    avr_static_hit_rate = 0
+    avr_static_importance_scores = None
+    # QS method
+    avr_QS_svm_accuracies_per_epoch = None 
+    avr_QS_hit_rate_per_epoch = None
+    avr_QS_importance_scores = None
     
     # repeat the training process for certain times to get average results
     for repeat_idx in range(args.repeat):
@@ -229,29 +260,59 @@ def main():
             seed_everything(args.seeds[repeat_idx])
         
         # start the training
-        loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model, repeat_idx)
+        loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, svm_accuracies_per_epoch, feature_indexes_per_epoch, hit_rate_per_epoch, dynamic_importance_scores,static_svm_accuracies, static_hit_rate, static_importance_scores, QS_svm_accuracies_per_epoch, QS_feature_indexes_per_epoch, QS_hit_rate_per_epoch, QS_importance_scores = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model, repeat_idx)
         
         if repeat_idx == 0 :
+            # dynamic method
             avr_loss_per_epoch = np.array(loss_per_epoch)
             avr_valid_accuracy_per_epoch = np.array(valid_accuracy_per_epoch)
             avr_svm_accuracies_per_epoch = np.stack(svm_accuracies_per_epoch)
             avr_hit_rate_per_epoch = np.array(hit_rate_per_epoch)
+            avr_dynamic_importance_scores = dynamic_importance_scores
+            # static method
+            avr_static_hit_rate = static_hit_rate
+            avr_static_svm_accuracies = np.array(static_svm_accuracies)
+            avr_static_importance_scores = static_importance_scores
+            # QS method
+            avr_QS_svm_accuracies_per_epoch = np.stack(QS_svm_accuracies_per_epoch)
+            avr_QS_hit_rate_per_epoch = np.array(QS_hit_rate_per_epoch)
+            avr_QS_importance_scores = QS_importance_scores
         else:
+            # dynamic method
             avr_loss_per_epoch += np.array(loss_per_epoch)
             avr_valid_accuracy_per_epoch += np.array(valid_accuracy_per_epoch)
             avr_svm_accuracies_per_epoch += np.stack(svm_accuracies_per_epoch)
             avr_hit_rate_per_epoch += np.array(hit_rate_per_epoch)
+            avr_dynamic_importance_scores +=dynamic_importance_scores
+            # static method
+            avr_static_hit_rate += static_hit_rate
+            avr_static_svm_accuracies += np.array(static_svm_accuracies)
+            avr_static_importance_scores += static_importance_scores
+            # QS method
+            avr_QS_svm_accuracies_per_epoch += np.stack(QS_svm_accuracies_per_epoch)
+            avr_QS_hit_rate_per_epoch += np.array(QS_hit_rate_per_epoch)
+            avr_QS_importance_scores += QS_importance_scores
 
 
         avr_test_accuracy += test_accuracy
 
 
     # calculate the aaverage results
+    # dynamic method
     avr_loss_per_epoch = (avr_loss_per_epoch/args.repeat).tolist()
     avr_valid_accuracy_per_epoch = (avr_valid_accuracy_per_epoch/args.repeat).tolist()
     avr_svm_accuracies_per_epoch = (avr_svm_accuracies_per_epoch/args.repeat).tolist()
     avr_test_accuracy = avr_test_accuracy/args.repeat
     avr_hit_rate_per_epoch = (avr_hit_rate_per_epoch/args.repeat).tolist()
+    avr_dynamic_importance_scores = (avr_dynamic_importance_scores/args.repeat).tolist()
+    # static method
+    avr_static_hit_rate = avr_static_hit_rate/args.repeat
+    avr_static_svm_accuracies = (avr_static_svm_accuracies/args.repeat).tolist()
+    avr_static_importance_scores = (avr_static_importance_scores/args.repeat).tolist()
+    # QS method
+    avr_QS_svm_accuracies_per_epoch = (avr_QS_svm_accuracies_per_epoch/args.repeat).tolist()
+    avr_QS_hit_rate_per_epoch = (avr_QS_hit_rate_per_epoch/args.repeat).tolist()
+    avr_QS_importance_scores = (avr_QS_importance_scores/args.repeat).tolist()
 
     # save the results as json file
     json_data = {
@@ -263,12 +324,22 @@ def main():
             'num_training' : args.num_training
         },
         'results': {
+            # dynamic method
             'svm_accuracies_per_epoch': svm_accuracies_per_epoch,
             'feature_indexes_per_epoch': feature_indexes_per_epoch,
             'loss_per_epoch': avr_loss_per_epoch,
             'valid_accuracy_per_epoch': avr_valid_accuracy_per_epoch,
             'test_accuracy': avr_test_accuracy,
-            'avr_hit_rate_per_epoch': avr_hit_rate_per_epoch
+            'avr_hit_rate_per_epoch': avr_hit_rate_per_epoch,
+            'avr_dynamic_importance_scores': avr_dynamic_importance_scores,
+            # static method
+            'avr_static_hit_rate': avr_static_hit_rate,
+            'avr_static_svm_accuracies': avr_static_svm_accuracies,
+            'avr_static_importance_scores': avr_static_importance_scores,
+            # QS method
+            'avr_QS_svm_accuracies_per_epoch': avr_QS_svm_accuracies_per_epoch,
+            'avr_QS_hit_rate_per_epoch': avr_QS_hit_rate_per_epoch,
+            'avr_QS_importance_scores': avr_QS_importance_scores
         }
     }
     json_object = json.dumps(json_data)
