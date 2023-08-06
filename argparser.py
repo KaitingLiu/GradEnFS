@@ -14,7 +14,7 @@ def get_parser():
     # argument for training
     parser.add_argument('--epoch', type=int, default=500, help='The number of training epoch (default: 500).')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate (default: 0.01).')
-    parser.add_argument('--device', type=str, default='cpu', help='The device of running the program. (default:cpu, option: cup, cuda)')
+    parser.add_argument('--device', type=str, default='cpu', help='The device of running the program. (default:cpu, option: cpu, cuda)')
 
     # argument for dst algorithms
     parser.add_argument('--network', type=str, default='sparse', help='Choose the network (default: sparse, option: dense, sparse).')
@@ -29,6 +29,9 @@ def get_parser():
     
     # repeat times
     parser.add_argument('--repeat', type=int, default=5, help='The number of experiment (default: 5).')
+
+    # log parameters
+    parser.add_argument('--detail', action='store_true', help='Choose to calculate and log the svm accuracy after every epoch, this will significantly increse the training time.')
 
     # argument for generating artificial noisy data 
     parser.add_argument('--n_classes', type=int, default=2, help='The number of classes (or labels) of the classification problem (default: 2).')

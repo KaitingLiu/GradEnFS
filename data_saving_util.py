@@ -20,17 +20,7 @@ def create_dir(args):
     if not os.path.exists(results_path): os.mkdir(results_path)
     results_path = results_path + '/' + str(args.epsilon)
 
-    # making dir for models, the final path will be ./conn_results/dataset/epsilon
-    models_path = './neu_imp_models'
-    if not os.path.exists(models_path): os.mkdir(models_path)
-    models_path = models_path + '/' + args.dataset
-    if not os.path.exists(models_path): os.mkdir(models_path)
-    models_path = models_path + '/' + args.network
-    if not os.path.exists(models_path): os.mkdir(models_path)
-    models_path = models_path + '/' + str(args.epsilon)
-    if not os.path.exists(models_path): os.mkdir(models_path)
-
     logs_name = '{}.log'.format(logs_path)
     results_name = '{}.json'.format(results_path)
 
-    return logs_name, results_name, models_path
+    return logs_name, results_name

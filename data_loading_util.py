@@ -1,9 +1,9 @@
 # import lib
 import torch
 import numpy as np
-from keras.datasets import mnist
-from keras.datasets import cifar100
-from keras.utils import np_utils
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.datasets import fashion_mnist
+from tensorflow.keras.utils import to_categorical
 import scipy.io
 from sklearn.utils import shuffle
 import urllib.request as urllib2
@@ -31,6 +31,70 @@ class Dataset(torch.utils.data.Dataset):
 
 
 # function for loading data
+def load_mnist_mini():
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+    # shuffle the data
+    x_train, y_train = shuffle(x_train, y_train)
+    x_test, y_test = shuffle(x_test, y_test)
+
+    # Normalize data
+    x_train = x_train / 255.
+    x_test = x_test / 255.
+    x_train = x_train.astype('float32')
+    x_test = x_test.astype('float32')
+
+    # reshape the data
+    x_train = x_train.reshape(x_train.shape[0], x_train.shape[1] * x_train.shape[2])
+    x_test = x_test.reshape(x_test.shape[0], x_test.shape[1] * x_test.shape[2])
+
+    # turn the label to one-hot
+    y_train = to_categorical(y_train, 10)
+    y_test = to_categorical(y_test, 10)
+
+    # split 10% from training dataset to validation dataset
+    x_valid = x_train[10000:11000]
+    y_valid = y_train[10000:11000]
+    x_train = x_train[:10000]
+    y_train = y_train[:10000]
+    x_test = x_test[:1000]
+    y_test = y_test[:1000]
+
+    return x_train, y_train, x_valid, y_valid, x_test, y_test
+
+def load_fashion_mnist_mini():
+    (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+
+    # shuffle the data
+    x_train, y_train = shuffle(x_train, y_train)
+    x_test, y_test = shuffle(x_test, y_test)
+
+    # Normalize data
+    x_train = x_train / 255.
+    x_test = x_test / 255.
+    x_train = x_train.astype('float32')
+    x_test = x_test.astype('float32')
+
+    # reshape the data
+    x_train = x_train.reshape(x_train.shape[0], x_train.shape[1] * x_train.shape[2])
+    x_test = x_test.reshape(x_test.shape[0], x_test.shape[1] * x_test.shape[2])
+
+    # turn the label to one-hot
+    y_train = to_categorical(y_train, 10)
+    y_test = to_categorical(y_test, 10)
+
+    # split 10% from training dataset to validation dataset
+    x_valid = x_train[10000:11000]
+    y_valid = y_train[10000:11000]
+    x_train = x_train[:10000]
+    y_train = y_train[:10000]
+    x_test = x_test[:1000]
+    y_test = y_test[:1000]
+
+    return x_train, y_train, x_valid, y_valid, x_test, y_test
+
+
+# function for loading data
 def load_mnist():
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
 
@@ -49,16 +113,47 @@ def load_mnist():
     x_test = x_test.reshape(x_test.shape[0], x_test.shape[1] * x_test.shape[2])
 
     # turn the label to one-hot
-    y_train = np_utils.to_categorical(y_train, 10)
-    y_test = np_utils.to_categorical(y_test, 10)
+    y_train = to_categorical(y_train, 10)
+    y_test = to_categorical(y_test, 10)
 
     # split 10% from training dataset to validation dataset
-    x_valid = x_train[10000:11000]
-    y_valid = y_train[10000:11000]
-    x_train = x_train[:10000]
-    y_train = y_train[:10000]
-    x_test = x_test[:1000]
-    y_test = y_test[:1000]
+    index_validation = x_train.shape[0]
+    index_training = math.ceil(index_validation*0.9)
+    x_valid = x_train[index_training:index_validation]
+    y_valid = y_train[index_training:index_validation]
+    x_train = x_train[:index_training]
+    y_train = y_train[:index_training]
+
+    return x_train, y_train, x_valid, y_valid, x_test, y_test
+
+def load_fashion_mnist():
+    (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
+
+    # shuffle the data
+    x_train, y_train = shuffle(x_train, y_train)
+    x_test, y_test = shuffle(x_test, y_test)
+
+    # Normalize data
+    x_train = x_train / 255.
+    x_test = x_test / 255.
+    x_train = x_train.astype('float32')
+    x_test = x_test.astype('float32')
+
+    # reshape the data
+    x_train = x_train.reshape(x_train.shape[0], x_train.shape[1] * x_train.shape[2])
+    x_test = x_test.reshape(x_test.shape[0], x_test.shape[1] * x_test.shape[2])
+
+    # turn the label to one-hot
+    y_train = to_categorical(y_train, 10)
+    y_test = to_categorical(y_test, 10)
+
+    # split 10% from training dataset to validation dataset
+    index_validation = x_train.shape[0]
+    index_training = math.ceil(index_validation*0.9)
+    x_valid = x_train[index_training:index_validation]
+    y_valid = y_train[index_training:index_validation]
+    x_train = x_train[:index_training]
+    y_train = y_train[:index_training]
 
     return x_train, y_train, x_valid, y_valid, x_test, y_test
 
@@ -87,8 +182,8 @@ def load_madelon():
     test_y[test_y == -1] = 0
 
     # turn the label to one-hot
-    train_y = np_utils.to_categorical(train_y, 2)
-    test_y = np_utils.to_categorical(test_y, 2)
+    train_y = to_categorical(train_y, 2)
+    test_y = to_categorical(test_y, 2)
 
     # split validation set from training set by 10%
     valid_x = train_x[1800:]
@@ -111,7 +206,7 @@ def load_mat(filename, num_datapoint, num_class):
 
     # turn the label to one-hot
     y[y == num_class] = 0 # make the classes count from 0
-    y = np_utils.to_categorical(y, num_class)
+    y = to_categorical(y, num_class)
 
     # split 20% as test set, and split 10% from train set as validation set
     valid_idx = math.ceil(num_datapoint * 0.8)
@@ -138,7 +233,7 @@ def get_artificial_data(args):
 
     # turn the label to one-hot, and also turn the dtype
     x = x.astype('float32')
-    y = np_utils.to_categorical(y, args.n_classes)
+    y = to_categorical(y, args.n_classes)
 
     # split 20% as test set, and split 10% from train set as validation set
     valid_idx = math.ceil(args.n_samples * 0.8)
@@ -158,6 +253,12 @@ def get_dataset(dataset_name):
 # mnist
     if dataset_name == 'mnist':
         return load_mnist()
+    elif dataset_name == 'fashion_mnist':
+        return load_fashion_mnist()
+    elif dataset_name == 'mnist_mini':
+        return load_mnist_mini()
+    elif dataset_name == 'fashion_mnist_mini':
+        return load_fashion_mnist_mini()
 
 # text dataset
     elif dataset_name == 'basehock':

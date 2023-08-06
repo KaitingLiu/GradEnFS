@@ -78,7 +78,7 @@ class DST():
                 self.logger.info('Stop random regrow in the last batch {} of the last epoch {}'.format(epoch_idx, batch_idx))
             else:
                 self.random_addition()
-            self.logger.info('Updating the sparse neural network topology')
+            # self.logger.info('Updating the sparse neural network topology')
                     
             
 
@@ -145,9 +145,12 @@ class DST():
 
     # evaluate the neuron importance scores by selecting features
     def select_features(self, importance_scores):
-        svm_accuracies = []
         _, indexes = torch.topk(importance_scores, dim=0, k=self.k_list[-1], largest=True)
         indexes = indexes.tolist()
+        return indexes
+
+    def svm_acc(self, indexes):
+        svm_accuracies = []
         for k in self.k_list:
             # get the indexes of the input neuron with the largest neuron importance scores
             k_indexes = indexes[:k]
@@ -158,7 +161,7 @@ class DST():
             info = 'The SVM accuracy is {} for {} features in {} network'.format(accuracy, k, self.network)
             self.logger.info(info)
         # return the accuracies for every k features in svm, and the longest inforamtive indexes
-        return svm_accuracies, indexes
+        return svm_accuracies
 
     # evaluate the neuron importance scores by selecting features
     def hit_rate(self, importance_scores):
