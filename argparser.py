@@ -12,7 +12,7 @@ def get_parser():
     parser.add_argument('--hidden_dim', type=int, default=1000, help='Number of hidden neuron (default: 1000).')
 
     # argument for training
-    parser.add_argument('--epoch', type=int, default=500, help='The number of training epoch (default: 500).')
+    parser.add_argument('--epoch', type=int, default=100, help='The number of training epoch (default: 500).')
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate (default: 0.01).')
     parser.add_argument('--device', type=str, default='cpu', help='The device of running the program. (default:cpu, option: cpu, cuda)')
 
