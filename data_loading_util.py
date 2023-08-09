@@ -29,71 +29,6 @@ class Dataset(torch.utils.data.Dataset):
         y = self.labels[index]
         return X, y
 
-
-# function for loading data
-def load_mnist_mini():
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-
-    # shuffle the data
-    x_train, y_train = shuffle(x_train, y_train)
-    x_test, y_test = shuffle(x_test, y_test)
-
-    # Normalize data
-    x_train = x_train / 255.
-    x_test = x_test / 255.
-    x_train = x_train.astype('float32')
-    x_test = x_test.astype('float32')
-
-    # reshape the data
-    x_train = x_train.reshape(x_train.shape[0], x_train.shape[1] * x_train.shape[2])
-    x_test = x_test.reshape(x_test.shape[0], x_test.shape[1] * x_test.shape[2])
-
-    # turn the label to one-hot
-    y_train = to_categorical(y_train, 10)
-    y_test = to_categorical(y_test, 10)
-
-    # split 10% from training dataset to validation dataset
-    x_valid = x_train[10000:11000]
-    y_valid = y_train[10000:11000]
-    x_train = x_train[:10000]
-    y_train = y_train[:10000]
-    x_test = x_test[:1000]
-    y_test = y_test[:1000]
-
-    return x_train, y_train, x_valid, y_valid, x_test, y_test
-
-def load_fashion_mnist_mini():
-    (x_train, y_train), (x_test, y_test) = fashion_mnist.load_data()
-
-    # shuffle the data
-    x_train, y_train = shuffle(x_train, y_train)
-    x_test, y_test = shuffle(x_test, y_test)
-
-    # Normalize data
-    x_train = x_train / 255.
-    x_test = x_test / 255.
-    x_train = x_train.astype('float32')
-    x_test = x_test.astype('float32')
-
-    # reshape the data
-    x_train = x_train.reshape(x_train.shape[0], x_train.shape[1] * x_train.shape[2])
-    x_test = x_test.reshape(x_test.shape[0], x_test.shape[1] * x_test.shape[2])
-
-    # turn the label to one-hot
-    y_train = to_categorical(y_train, 10)
-    y_test = to_categorical(y_test, 10)
-
-    # split 10% from training dataset to validation dataset
-    x_valid = x_train[10000:11000]
-    y_valid = y_train[10000:11000]
-    x_train = x_train[:10000]
-    y_train = y_train[:10000]
-    x_test = x_test[:1000]
-    y_test = y_test[:1000]
-
-    return x_train, y_train, x_valid, y_valid, x_test, y_test
-
-
 # function for loading data
 def load_mnist():
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -202,10 +137,18 @@ def load_mat(filename, num_datapoint, num_class):
     x = x.astype('float32')
     xMean = np.mean(x, axis=0)
     xStd = np.std(x, axis=0)
-    x = (x - xMean) / xStd
+    x = (x - xMean) / xStd 
 
     # turn the label to one-hot
-    y[y == num_class] = 0 # make the classes count from 0
+    unique_classes = np.unique(y)
+    if -1 in unique_classes:
+        if not 0 in unique_classes:
+            y[y == -1] = 0 # make the classes count from 0
+        else:
+            y[y== -1] = num_class - 1
+    unique_classes = np.unique(y)
+    if not 0 in unique_classes:
+        y[y == num_class] = 0 # make the classes count from 0
     y = to_categorical(y, num_class)
 
     # split 20% as test set, and split 10% from train set as validation set
@@ -255,16 +198,12 @@ def get_dataset(dataset_name):
         return load_mnist()
     elif dataset_name == 'fashion_mnist':
         return load_fashion_mnist()
-    elif dataset_name == 'mnist_mini':
-        return load_mnist_mini()
-    elif dataset_name == 'fashion_mnist_mini':
-        return load_fashion_mnist_mini()
 
 # text dataset
     elif dataset_name == 'basehock':
         return load_mat('./datasets/BASEHOCK.mat', 1993, 2)
     elif dataset_name == 'pcmac':
-        return load_mat('.datasets/PCMAC.mat', 1943, 2)
+        return load_mat('./datasets/PCMAC.mat', 1943, 2)
     elif dataset_name == 'relathe':
         return load_mat('./datasets/RELATHE.mat', 1427, 2)
 
@@ -318,6 +257,8 @@ def get_dataset(dataset_name):
     
     # other data
     elif dataset_name == 'arcene':
+        x, y ,_,_,_,_ = load_mat('./datasets/arcene.mat', 200, 2)
+        print(x.shape, y[1])
         return load_mat('./datasets/arcene.mat', 200, 2)
     elif dataset_name == 'gisette':
         return load_mat('./datasets/gisette.mat', 7000, 2) 

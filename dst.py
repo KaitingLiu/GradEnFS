@@ -20,6 +20,7 @@ class DST():
         # arguments for generating sparse network, and store the setting
         self.epsilon = args.epsilon # epsilon use to control the sparsity level P(W_n) = epsilon(n+n_prv)/(n*n_prv)
         self.alpha = args.alpha # alpha is the rate of updating connection
+        self.beta = args.beta # beta is the hyperparameter for calculating the neuron importance score
         self.masks = {} # 0-1 masks (torch tensor) to implement sparse topology in pytorch
         self.param_counts = {} # number of params (scalar) in each layer in sparse neural network
         self.densities = {} # number of density (scalar) in each layer in sparse neural network
@@ -141,7 +142,7 @@ class DST():
         return torch.zeros(self.model.input_dim).float().to(self.device)
         
     def update_importance_scores(self, grad):
-        self.importance_scores = self.importance_scores + grad
+        self.importance_scores = self.beta * self.importance_scores + grad
 
     # evaluate the neuron importance scores by selecting features
     def select_features(self, importance_scores):

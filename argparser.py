@@ -16,10 +16,11 @@ def get_parser():
     parser.add_argument('--lr', type=float, default=0.001, help='Learning rate (default: 0.01).')
     parser.add_argument('--device', type=str, default='cpu', help='The device of running the program. (default:cpu, option: cpu, cuda)')
 
-    # argument for dst algorithms
+    # argument for fs algorithms
     parser.add_argument('--network', type=str, default='sparse', help='Choose the network (default: sparse, option: dense, sparse).')
     parser.add_argument('--epsilon', type=int, default=1, help='Control of the sparsity level (default: 1).')
     parser.add_argument('--alpha', type=float, default=0.3, help='Prunning rate during the topology update (default: 0.3).')
+    parser.add_argument('--beta', type=float, default=0.9, help='Hyperparameter for calculating the neuron importance metric (default: 0.9).')
     parser.add_argument('--batch_update', action='store_true', help='Choose to update topology after every batch.')
     parser.add_argument('--use_seeds', action='store_true', help='Choose to control random seeds in pytorch.')
     parser.add_argument('--seeds', type=int, action='store', nargs='*', default=[0, 1, 2, 3, 4], help='The list of seed for repeating experiment, use to control the generation of initial sparse network.')
