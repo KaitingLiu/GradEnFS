@@ -1,0 +1,133 @@
+*************************************************arguments*************************************************
+Namespace(alpha=0.3, batch=54, batch_update=True, beta=0.7, class_sep=1.0, dataset='mnist', detail=False, device='cpu', epoch=100, epsilon=50, evaluating_batch_size=10000, flip_y=0.01, hidden_dim=1000, input_dim=784, k_list=[25, 50, 75, 100, 150, 200], logs_name='./neu_imp_logs/mnist/sparse/50_0.7_0.3.log', lr=0.001, n_classes=2, n_clusters_per_class=1, n_features=500, n_informative=5, n_redundant=15, n_samples=1000, network='sparse', num_testing=1000, num_training=5400, num_validation=600, output_dim=10, random_state=0, repeat=1, results_name='./neu_imp_results/mnist/sparse/50_0.7_0.3.json', seeds=[0, 1, 2, 3, 4], shuffle=False, training_batch_size=100, use_seeds=False)
+*************************************************Repeat 1*************************************************
+Neural Network:
+fc1.weight number of parameters(dense counterpart):784000 number of parameters(network topology):89406 density:0.113776 sparsity:0.886224
+fc2.weight number of parameters(dense counterpart):1000000 number of parameters(network topology):100606 density:0.100000 sparsity:0.900000
+fc3.weight number of parameters(dense counterpart):1000000 number of parameters(network topology):99710 density:0.100000 sparsity:0.900000
+fc4.weight number of parameters(dense counterpart):10000 number of parameters(network topology):10000 density:1.000000 sparsity:0.000000
+the entire network number of parameters(dense counterpart):2794000 number of parameters(network topology):299722 overall density:0.107273 overall sparsity:0.892727
+successfully initialize neuron importance scores for every input neurons.
+Epoch 1 Loss: 1.537997 Validation Accuracy: 0.906667
+Epoch 2 Loss: 1.501670 Validation Accuracy: 0.941667
+Epoch 3 Loss: 1.480341 Validation Accuracy: 0.930000
+Epoch 4 Loss: 1.472500 Validation Accuracy: 0.931667
+Epoch 5 Loss: 1.471915 Validation Accuracy: 0.935000
+Epoch 6 Loss: 1.478505 Validation Accuracy: 0.935000
+Epoch 7 Loss: 1.471286 Validation Accuracy: 0.938333
+Epoch 8 Loss: 1.470856 Validation Accuracy: 0.936667
+Epoch 9 Loss: 1.467099 Validation Accuracy: 0.943333
+Epoch 10 Loss: 1.461903 Validation Accuracy: 0.938333
+Epoch 11 Loss: 1.465760 Validation Accuracy: 0.938333
+Epoch 12 Loss: 1.462972 Validation Accuracy: 0.931667
+Epoch 13 Loss: 1.465531 Validation Accuracy: 0.948333
+Epoch 14 Loss: 1.465427 Validation Accuracy: 0.946667
+Epoch 15 Loss: 1.462325 Validation Accuracy: 0.930000
+Epoch 16 Loss: 1.463129 Validation Accuracy: 0.943333
+Epoch 17 Loss: 1.462035 Validation Accuracy: 0.945000
+Epoch 18 Loss: 1.462731 Validation Accuracy: 0.933333
+Epoch 19 Loss: 1.461647 Validation Accuracy: 0.936667
+Epoch 20 Loss: 1.461398 Validation Accuracy: 0.936667
+Epoch 21 Loss: 1.461477 Validation Accuracy: 0.940000
+Epoch 22 Loss: 1.461186 Validation Accuracy: 0.946667
+Epoch 23 Loss: 1.461185 Validation Accuracy: 0.946667
+Epoch 24 Loss: 1.461182 Validation Accuracy: 0.946667
+Epoch 25 Loss: 1.461181 Validation Accuracy: 0.946667
+Epoch 26 Loss: 1.461176 Validation Accuracy: 0.946667
+Epoch 27 Loss: 1.461176 Validation Accuracy: 0.943333
+Epoch 28 Loss: 1.461174 Validation Accuracy: 0.945000
+Epoch 29 Loss: 1.461174 Validation Accuracy: 0.948333
+Epoch 30 Loss: 1.461205 Validation Accuracy: 0.945000
+Epoch 31 Loss: 1.461214 Validation Accuracy: 0.950000
+Epoch 32 Loss: 1.461176 Validation Accuracy: 0.950000
+Epoch 33 Loss: 1.461172 Validation Accuracy: 0.951667
+Epoch 34 Loss: 1.461171 Validation Accuracy: 0.951667
+Epoch 35 Loss: 1.461269 Validation Accuracy: 0.945000
+Epoch 36 Loss: 1.461160 Validation Accuracy: 0.945000
+Epoch 37 Loss: 1.461160 Validation Accuracy: 0.948333
+Epoch 38 Loss: 1.461160 Validation Accuracy: 0.948333
+Epoch 39 Loss: 1.461159 Validation Accuracy: 0.946667
+Epoch 40 Loss: 1.461158 Validation Accuracy: 0.946667
+Epoch 41 Loss: 1.461158 Validation Accuracy: 0.948333
+Epoch 42 Loss: 1.461158 Validation Accuracy: 0.948333
+Epoch 43 Loss: 1.461157 Validation Accuracy: 0.951667
+Epoch 44 Loss: 1.461157 Validation Accuracy: 0.948333
+Epoch 45 Loss: 1.461157 Validation Accuracy: 0.946667
+Epoch 46 Loss: 1.461157 Validation Accuracy: 0.950000
+Epoch 47 Loss: 1.461156 Validation Accuracy: 0.951667
+Epoch 48 Loss: 1.461160 Validation Accuracy: 0.953333
+Epoch 49 Loss: 1.461169 Validation Accuracy: 0.951667
+Epoch 50 Loss: 1.461161 Validation Accuracy: 0.951667
+Epoch 51 Loss: 1.461159 Validation Accuracy: 0.951667
+Epoch 52 Loss: 1.461158 Validation Accuracy: 0.951667
+Epoch 53 Loss: 1.461158 Validation Accuracy: 0.951667
+Epoch 54 Loss: 1.461157 Validation Accuracy: 0.951667
+Epoch 55 Loss: 1.461157 Validation Accuracy: 0.950000
+Epoch 56 Loss: 1.461156 Validation Accuracy: 0.951667
+Epoch 57 Loss: 1.461155 Validation Accuracy: 0.951667
+Epoch 58 Loss: 1.461155 Validation Accuracy: 0.951667
+Epoch 59 Loss: 1.461156 Validation Accuracy: 0.951667
+Epoch 60 Loss: 1.461156 Validation Accuracy: 0.950000
+Epoch 61 Loss: 1.461155 Validation Accuracy: 0.950000
+Epoch 62 Loss: 1.461155 Validation Accuracy: 0.948333
+Epoch 63 Loss: 1.461155 Validation Accuracy: 0.945000
+Epoch 64 Loss: 1.461155 Validation Accuracy: 0.945000
+Epoch 65 Loss: 1.461155 Validation Accuracy: 0.948333
+Epoch 66 Loss: 1.461154 Validation Accuracy: 0.950000
+Epoch 67 Loss: 1.461154 Validation Accuracy: 0.950000
+Epoch 68 Loss: 1.461154 Validation Accuracy: 0.951667
+Epoch 69 Loss: 1.461154 Validation Accuracy: 0.950000
+Epoch 70 Loss: 1.461154 Validation Accuracy: 0.950000
+Epoch 71 Loss: 1.461154 Validation Accuracy: 0.948333
+Epoch 72 Loss: 1.461153 Validation Accuracy: 0.948333
+Epoch 73 Loss: 1.461154 Validation Accuracy: 0.946667
+Epoch 74 Loss: 1.461153 Validation Accuracy: 0.950000
+Epoch 75 Loss: 1.461154 Validation Accuracy: 0.951667
+Epoch 76 Loss: 1.461153 Validation Accuracy: 0.951667
+Epoch 77 Loss: 1.461154 Validation Accuracy: 0.950000
+Epoch 78 Loss: 1.461154 Validation Accuracy: 0.948333
+Epoch 79 Loss: 1.461153 Validation Accuracy: 0.950000
+Epoch 80 Loss: 1.461153 Validation Accuracy: 0.951667
+Epoch 81 Loss: 1.461153 Validation Accuracy: 0.950000
+Epoch 82 Loss: 1.461153 Validation Accuracy: 0.950000
+Epoch 83 Loss: 1.461153 Validation Accuracy: 0.950000
+Epoch 84 Loss: 1.461153 Validation Accuracy: 0.950000
+Epoch 85 Loss: 1.461153 Validation Accuracy: 0.951667
+Epoch 86 Loss: 1.461152 Validation Accuracy: 0.953333
+Epoch 87 Loss: 1.461152 Validation Accuracy: 0.950000
+Epoch 88 Loss: 1.461152 Validation Accuracy: 0.950000
+Epoch 89 Loss: 1.461152 Validation Accuracy: 0.948333
+Epoch 90 Loss: 1.461152 Validation Accuracy: 0.946667
+Epoch 91 Loss: 1.461152 Validation Accuracy: 0.948333
+Epoch 92 Loss: 1.461152 Validation Accuracy: 0.948333
+Epoch 93 Loss: 1.461152 Validation Accuracy: 0.946667
+Epoch 94 Loss: 1.461152 Validation Accuracy: 0.946667
+Epoch 95 Loss: 1.461152 Validation Accuracy: 0.948333
+Epoch 96 Loss: 1.461152 Validation Accuracy: 0.950000
+Epoch 97 Loss: 1.461152 Validation Accuracy: 0.948333
+Epoch 98 Loss: 1.461152 Validation Accuracy: 0.948333
+Epoch 99 Loss: 1.461152 Validation Accuracy: 0.948333
+Stop random regrow in the last batch 100 of the last epoch 54
+Epoch 100 Loss: 1.461151 Validation Accuracy: 0.948333
+Test accuracy of the final network: 0.957
+Statistic of the proposed dynamic method:
+The SVM accuracy is 0.477 for 25 features in sparse network
+The SVM accuracy is 0.606 for 50 features in sparse network
+The SVM accuracy is 0.802 for 75 features in sparse network
+The SVM accuracy is 0.858 for 100 features in sparse network
+The SVM accuracy is 0.888 for 150 features in sparse network
+The SVM accuracy is 0.918 for 200 features in sparse network
+Statistic of the static method:
+The SVM accuracy is 0.131 for 25 features in sparse network
+The SVM accuracy is 0.171 for 50 features in sparse network
+The SVM accuracy is 0.243 for 75 features in sparse network
+The SVM accuracy is 0.388 for 100 features in sparse network
+The SVM accuracy is 0.774 for 150 features in sparse network
+The SVM accuracy is 0.882 for 200 features in sparse network
+Statistic of the QS method:
+The SVM accuracy is 0.139 for 25 features in sparse network
+The SVM accuracy is 0.178 for 50 features in sparse network
+The SVM accuracy is 0.235 for 75 features in sparse network
+The SVM accuracy is 0.287 for 100 features in sparse network
+The SVM accuracy is 0.487 for 150 features in sparse network
+The SVM accuracy is 0.758 for 200 features in sparse network

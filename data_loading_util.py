@@ -52,13 +52,18 @@ def load_mnist():
     y_test = to_categorical(y_test, 10)
 
     # split 10% from training dataset to validation dataset
-    index_validation = x_train.shape[0]
-    index_training = math.ceil(index_validation*0.9)
-    x_valid = x_train[index_training:index_validation]
-    y_valid = y_train[index_training:index_validation]
-    x_train = x_train[:index_training]
-    y_train = y_train[:index_training]
-
+    # index_validation = x_train.shape[0]
+    # index_training = math.ceil(index_validation*0.9)
+    # x_valid = x_train[index_training:index_validation]
+    # y_valid = y_train[index_training:index_validation]
+    # x_train = x_train[:index_training]
+    # y_train = y_train[:index_training]
+    x_valid = x_train[5400:6000]
+    y_valid = y_train[5400:6000]
+    x_train = x_train[:5400]
+    y_train = y_train[:5400]
+    x_test = x_test[:1000]
+    y_test = y_test[:1000]
     return x_train, y_train, x_valid, y_valid, x_test, y_test
 
 def load_fashion_mnist():
@@ -257,8 +262,6 @@ def get_dataset(dataset_name):
     
     # other data
     elif dataset_name == 'arcene':
-        x, y ,_,_,_,_ = load_mat('./datasets/arcene.mat', 200, 2)
-        print(x.shape, y[1])
         return load_mat('./datasets/arcene.mat', 200, 2)
     elif dataset_name == 'gisette':
         return load_mat('./datasets/gisette.mat', 7000, 2) 

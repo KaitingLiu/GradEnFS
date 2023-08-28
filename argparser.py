@@ -4,7 +4,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description='Final Thesis main program.')
 
     # argument for loading the dataset
-    parser.add_argument('--dataset', type=str, default='artificial', help='The dataset to use (default: artificial, option: artificial, mnist, madelon, basehock, isolet, coil20, usps).')
+    parser.add_argument('--dataset', type=str, default='madelon', help='The dataset to use (default: artificial, option: artificial, mnist, madelon, basehock, isolet, coil20, usps).')
     parser.add_argument('--training_batch_size', type=int, default=100, help='Input batch size for training (default: 100).')
     parser.add_argument('--evaluating_batch_size', type=int, default=10000, help='Input batch size for testing or validating (default: 10000).')
 
@@ -20,7 +20,7 @@ def get_parser():
     parser.add_argument('--network', type=str, default='sparse', help='Choose the network (default: sparse, option: dense, sparse).')
     parser.add_argument('--epsilon', type=int, default=1, help='Control of the sparsity level (default: 1).')
     parser.add_argument('--alpha', type=float, default=0.3, help='Prunning rate during the topology update (default: 0.3).')
-    parser.add_argument('--beta', type=float, default=0.9, help='Hyperparameter for calculating the neuron importance metric (default: 0.9).')
+    parser.add_argument('--beta', type=float, default=0.7, help='Hyperparameter for calculating the neuron importance metric (default: 0.9).')
     parser.add_argument('--batch_update', action='store_true', help='Choose to update topology after every batch.')
     parser.add_argument('--use_seeds', action='store_true', help='Choose to control random seeds in pytorch.')
     parser.add_argument('--seeds', type=int, action='store', nargs='*', default=[0, 1, 2, 3, 4], help='The list of seed for repeating experiment, use to control the generation of initial sparse network.')

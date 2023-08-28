@@ -9,7 +9,7 @@ def create_dir(args):
     if not os.path.exists(logs_path): os.mkdir(logs_path)
     logs_path = logs_path + '/' + args.network
     if not os.path.exists(logs_path): os.mkdir(logs_path)
-    logs_path = '{}/{}_{}'.format(logs_path, str(args.epsilon), str(args.beta))
+    logs_path = '{}/{}_{}_{}'.format(logs_path, str(args.epsilon), str(args.beta), str(args.alpha))
 
     # making dir for results, the final path will be ./conn_results/dataset/epsilon
     results_path = './neu_imp_results'
@@ -18,7 +18,7 @@ def create_dir(args):
     if not os.path.exists(results_path): os.mkdir(results_path)
     results_path = results_path + '/' + args.network
     if not os.path.exists(results_path): os.mkdir(results_path)
-    results_path = '{}/{}_{}'.format(results_path, str(args.epsilon), str(args.beta))
+    results_path = '{}/{}_{}_{}'.format(results_path, str(args.epsilon), str(args.beta), str(args.alpha))
 
     logs_name = '{}.log'.format(logs_path)
     results_name = '{}.json'.format(results_path)
