@@ -1,12 +1,12 @@
 # import lib
 import os
 
-from dst import DST
+from gradenfs import GradEnFS
 from argparser import get_parser
 import logging
 import sys
 import torch
-from data_loading_util import get_artificial_data, get_dataset, Dataset
+from data_loading_util import get_dataset, Dataset
 from data_saving_util import create_dir
 from torch.utils.data import DataLoader
 
@@ -18,7 +18,7 @@ import json
 import numpy as np
 import math
 
-from SVM_Model import SVM_Model
+from svm_model import SVM_Model
 
 # function that create a logger
 def setup_logger(args):
@@ -43,14 +43,14 @@ def setup_logger(args):
     # return logger
     return logger
 
-# function to control the random seed for generating the same initialized sparse network
+# function to control the random seed for initializing the neural network
 def seed_everything(seed: int):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     cudnn.deterministic = True
     cudnn.benchmark = True
 
-# function which use test set/validation set to evaluate the model's accuracy
+# function which use test/validation set to evaluate the model's accuracy
 def evaluate_mlp(model, data_loader, device, num_dataset):
     diff = 0
     with torch.no_grad():
@@ -69,91 +69,70 @@ def evaluate_mlp(model, data_loader, device, num_dataset):
     accuracy = 1 - (diff / num_dataset)
     return accuracy
 
+# function for evaluating feature selection algorithm on SVM accuracy
+def svm_acc(svm, k_list, indexes, logger):
+    svm_accuracies = []
+    for k in k_list:
+        # get the indexes of the input neuron with the largest neuron importance scores
+        k_indexes = indexes[:k]
+        # use these k informative features to train svm and get the accuracy
+        accuracy = svm.train_and_test(k_indexes)
+        # save the accuracy and log it
+        svm_accuracies.append(accuracy)
+        info = 'The SVM accuracy is {} for {} features'.format(accuracy, k)
+        logger.info(info)
+    # return the accuracies for every k features in svm, and the longest inforamtive indexes
+    return svm_accuracies
+
 # function shows how to train the model
-def train(model, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger):
-    # data saved for analysis
-    loss_per_epoch = []
-    valid_accuracy_per_epoch = []
-    # proposed dynamic method
-    dynamic_feature_indexes_per_epoch = []
-    dynamic_imp_per_epoch = []
-    # static mehtod
-    static_importance_scores = torch.zeros(model.input_dim).float().to(args.device)
-    # QS method
-    QS_feature_indexes_per_epoch = []
-    QS_imp_per_epoch = []
+def train(model, train_loader, validation_loader, optimizer, loss_function, gradenfs, args, logger):
+    # variable
+    losses= []
+    valid_accuracies = []
 
     # generate the sparse network
     model.to(args.device)
-    dst_algorithm.apply_mask()
-
+    gradenfs.apply_mask()
+        
+    # start training
     for epoch_idx in range(1, args.epoch+1):
-        # start training
         model.train()
         for batch_idx, (x, y) in enumerate(train_loader, start=1):
+            # get features and labels
             x, y = x.to(args.device), y.to(args.device)
             x.requires_grad = True
 
-            # feed forward, calculate the loss
+            # feed forward and calculate the loss
             optimizer.zero_grad()
             y_hat = model(x)
             loss = loss_function(y_hat, y)
 
-            # backpropagate, get the gradient info we want, and update the network's weights
+            # backpropagate, get the gradient of loss wrt the input neuron, and update the network's weights
             loss.backward() # backpropagate
-            grad = torch.mean(torch.abs(x.grad), dim=0) # get the gradient of loss with every input neuron
+            grad = torch.mean(torch.abs(x.grad), dim=0) # get the gradient of loss with respect to every input neurons
             optimizer.step() # do the optimization
 
-            # update the neuron importance score for all network
-            dst_algorithm.update_importance_scores(grad)
+            # update the neuron importance score
+            gradenfs.update_importance_scores(grad)
 
-            # check if we update mask every batch
-            if args.batch_update:
-                dst_algorithm.update_mask(epoch_idx, batch_idx)
-            # for all dst algorithm, even we don't update the mask, after backprop we still need to apply mask
-            dst_algorithm.apply_mask()
-        
-        # if the update frequency is not after every batch, we update it after every epoch
-        if not args.batch_update:
-            dst_algorithm.update_mask(epoch_idx, batch_idx)
-        # for all dst algorithm, even we don't update the mask, after backprop we still need to apply mask
-        dst_algorithm.apply_mask()
+            # update the mask and then update the network topology
+            gradenfs.update_mask(epoch_idx, batch_idx)
+            gradenfs.apply_mask()
 
-        # save some results after each epoch
-        loss_per_epoch.append(loss.detach().item())
+        # save loss and validation accuracy after each epoch
+        losses.append(loss.detach().item())
         model.eval()
         valid_accuracy = evaluate_mlp(model, validation_loader, args.device, args.num_validation)
-        valid_accuracy_per_epoch.append(valid_accuracy)
-        # also log the results and show it in console
+        valid_accuracies.append(valid_accuracy)
+        # log the loss and validation accuracy after each epoch
         info = 'Epoch {} Loss: {:.6f} Validation Accuracy: {:.6f}'.format(
-            epoch_idx, loss_per_epoch[-1], valid_accuracy)
+            epoch_idx, losses[-1], valid_accuracy)
         logger.info(info)
 
-        # we get the neuron importance scores for static method
-        if epoch_idx == args.epoch-1:
-            static_importance_scores = dst_algorithm.importance_scores
-        if epoch_idx == args.epoch:
-            static_importance_scores = dst_algorithm.importance_scores - static_importance_scores
+    # end training and return recorded data
+    return losses, valid_accuracies
 
-        # select k features and use svm to test it to see how neuron importance works after every epoch
-        # save the detail of proposed method and QS method
-        dynamic_features_indexes = dst_algorithm.select_features(dst_algorithm.importance_scores)
-        dynamic_feature_indexes_per_epoch.append(dynamic_features_indexes)
-        dynamic_imp_per_epoch.append(dst_algorithm.importance_scores)
-        QS_importance_scores = dst_algorithm.QS_importance_scores()
-        QS_features_indexes = dst_algorithm.select_features(QS_importance_scores)
-        QS_feature_indexes_per_epoch.append(QS_features_indexes)
-        QS_imp_per_epoch.append(QS_importance_scores)
-        if args.detail:
-            logger.info('Statistic of the proposed dynamic method:')
-            dst_algorithm.svm_acc(dynamic_features_indexes)
-            logger.info('Statistic of the QS method:')
-            dst_algorithm.svm_acc(QS_features_indexes)
-
-    # return data
-    return loss_per_epoch, valid_accuracy_per_epoch, static_importance_scores, dynamic_feature_indexes_per_epoch, QS_feature_indexes_per_epoch, dynamic_imp_per_epoch, QS_imp_per_epoch
-
-# function shows setup and start training for one time
+# function shows setup and start one training run
 def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model):
     # get model
     mlp = MLP(args.input_dim, args.hidden_dim, args.output_dim)
@@ -162,27 +141,21 @@ def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model
     optimizer = optim.Adam(mlp.parameters(), lr=args.lr)
     loss_function = nn.CrossEntropyLoss()
 
-    # get DST algorithm
-    dst_algorithm = DST(mlp, args, logger, svm_model)
+    # get GradEnFS algorithm
+    gradenfs = GradEnFS(mlp, args, logger)
 
     # start training
-    loss_per_epoch, valid_accuracy_per_epoch, static_importance_scores, dynamic_feature_indexes_per_epoch, QS_feature_indexes_per_epoch, dynamic_imp_per_epoch, QS_imp_per_epoch = train(mlp, train_loader, validation_loader, optimizer, loss_function, dst_algorithm, args, logger)
+    losses, valid_accuracies = train(mlp, train_loader, validation_loader, optimizer, loss_function, gradenfs, args, logger)
 
     # get the test accuracy of the final network, svm accuracies for all method
     test_accuracy = evaluate_mlp(mlp, test_loader, args.device, args.num_testing)
-    logger.info('Test accuracy of the final network: {}'.format(test_accuracy))
-    logger.info('Statistic of the proposed dynamic method:')
-    dynamic_svm_accuracies = dst_algorithm.svm_acc(dynamic_feature_indexes_per_epoch[-1])
+    logger.info('Test accuracy of the trained sparse neural network: {}'.format(test_accuracy))
+    logger.info('SVM accuracies evaluated on the feature selected by GradEnFS:')
+    selected_feature_indexes = gradenfs.select_features()
+    svm_accuracies = svm_acc(svm_model, args.k_list, selected_feature_indexes, logger)
 
-    logger.info('Statistic of the static method:')
-    static_features_indexes = dst_algorithm.select_features(static_importance_scores)
-    static_svm_accuracies = dst_algorithm.svm_acc(static_features_indexes)
-
-    logger.info('Statistic of the QS method:')
-    QS_svm_accuracies = dst_algorithm.svm_acc(QS_feature_indexes_per_epoch[-1])
-
-    # return this training's result
-    return loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, dynamic_svm_accuracies, static_svm_accuracies, QS_svm_accuracies, dst_algorithm.importance_scores, static_importance_scores, dst_algorithm.QS_importance_scores(), dynamic_feature_indexes_per_epoch, QS_feature_indexes_per_epoch, dynamic_imp_per_epoch, QS_imp_per_epoch
+    # return the training's result for this run
+    return losses, valid_accuracies, test_accuracy, svm_accuracies
 
 # main function, we repeat training several times here to get average results and save it
 def main():
@@ -198,10 +171,7 @@ def main():
     args.k_list.sort()
 
     # get dataset
-    if args.dataset == 'artificial':
-        x_train, y_train, x_valid, y_valid, x_test, y_test = get_artificial_data(args)
-    else:
-        x_train, y_train, x_valid, y_valid, x_test, y_test = get_dataset(args.dataset)
+    x_train, y_train, x_valid, y_valid, x_test, y_test = get_dataset(args.dataset)
     # make data loader
     train_loader = DataLoader(Dataset(x_train, y_train), batch_size=args.training_batch_size)
     validation_loader = DataLoader(Dataset(x_valid, y_valid), batch_size=args.evaluating_batch_size)
@@ -226,19 +196,12 @@ def main():
 
     # average result for multiple seed (multiple times of training)
     # proposed dynamic method
-    avr_loss_per_epoch = None
-    avr_valid_accuracy_per_epoch = None
+    avr_losses = np.zeros(args.epoch)
+    avr_valid_accuracies = np.zeros(args.epoch)
     avr_test_accuracy = 0
-    avr_dynamic_svm_accuracies = None
-    avr_dynamic_importance_scores = None
-    avr_dynamic_imp_per_epoch = None
-    # static method
-    avr_static_svm_accuracies = None
-    avr_static_importance_scores = None
-    # QS method
-    avr_QS_svm_accuracies = None
-    avr_QS_importance_scores = None
-    avr_QS_imp_per_epoch = None
+    avr_svm_accuracies = np.zeros(len(args.k_list))
+    svm_accuracies_per_run = []
+
     
     # repeat the training process for certain times to get average results
     for repeat_idx in range(args.repeat):
@@ -250,86 +213,35 @@ def main():
             seed_everything(args.seeds[repeat_idx])
         
         # start the training
-        loss_per_epoch, valid_accuracy_per_epoch, test_accuracy, dynamic_svm_accuracies, static_svm_accuracies, QS_svm_accuracies, dynamic_importance_scores, static_importance_scores, QS_importance_scores, dynamic_feature_indexes_per_epoch, QS_feature_indexes_per_epoch, dynamic_imp_per_epoch, QS_imp_per_epoch = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model)
+        losses, valid_accuracies, test_accuracy, svm_accuracies = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model)
 
-        if repeat_idx == 0 :
-            # dynamic method
-            avr_loss_per_epoch = np.array(loss_per_epoch)
-            avr_valid_accuracy_per_epoch = np.array(valid_accuracy_per_epoch)
-            avr_dynamic_importance_scores = dynamic_importance_scores
-            avr_dynamic_svm_accuracies = np.array(dynamic_svm_accuracies)
-            avr_dynamic_imp_per_epoch = torch.stack(dynamic_imp_per_epoch)
-            # static method
-            avr_static_importance_scores = static_importance_scores
-            avr_static_svm_accuracies = np.array(static_svm_accuracies)
-            # QS method
-            avr_QS_importance_scores = QS_importance_scores
-            avr_QS_svm_accuracies = np.array(QS_svm_accuracies)
-            avr_QS_imp_per_epoch = torch.stack(QS_imp_per_epoch)
-        else:
-            # dynamic method
-            avr_loss_per_epoch += np.array(loss_per_epoch)
-            avr_valid_accuracy_per_epoch += np.array(valid_accuracy_per_epoch)
-            avr_dynamic_importance_scores += dynamic_importance_scores
-            avr_dynamic_svm_accuracies += np.array(dynamic_svm_accuracies)
-            avr_dynamic_imp_per_epoch += torch.stack(dynamic_imp_per_epoch)
-            # static method
-            avr_static_importance_scores += static_importance_scores
-            avr_static_svm_accuracies += np.array(static_svm_accuracies)
-            # QS method
-            avr_QS_importance_scores += QS_importance_scores
-            avr_QS_svm_accuracies += np.array(QS_svm_accuracies)
-            avr_QS_imp_per_epoch += torch.stack(QS_imp_per_epoch)
-        
+        # record the results for every single run
+        avr_losses += np.array(losses)
+        avr_valid_accuracies += np.array(valid_accuracies)
         avr_test_accuracy += test_accuracy
+        avr_svm_accuracies += np.array(svm_accuracies)
+        svm_accuracies_per_run.append(svm_accuracies)
 
-
-    # calculate the aaverage results
-    # dynamic method
-    avr_loss_per_epoch = (avr_loss_per_epoch/args.repeat).tolist()
-    avr_valid_accuracy_per_epoch = (avr_valid_accuracy_per_epoch/args.repeat).tolist()
-    avr_dynamic_importance_scores = (avr_dynamic_importance_scores/args.repeat).tolist()
-    avr_dynamic_svm_accuracies = (avr_dynamic_svm_accuracies/args.repeat).tolist()
-    avr_dynamic_imp_per_epoch = (avr_dynamic_imp_per_epoch/args.repeat).tolist()
-    # static method
-    avr_static_importance_scores = (avr_static_importance_scores/args.repeat).tolist()
-    avr_static_svm_accuracies = (avr_static_svm_accuracies/args.repeat).tolist()
-    # QS method
-    avr_QS_importance_scores = (avr_QS_importance_scores/args.repeat).tolist()
-    avr_QS_svm_accuracies = (avr_QS_svm_accuracies/args.repeat).tolist()
-    avr_QS_imp_per_epoch = (avr_QS_imp_per_epoch/args.repeat).tolist()
-    # model
+    # calculate the average results after all experimental runs end
+    avr_losses = (avr_losses/args.repeat).tolist()
+    avr_valid_accuracies = (avr_valid_accuracies/args.repeat).tolist()
     avr_test_accuracy = avr_test_accuracy/args.repeat
+    avr_svm_accuracies = (avr_svm_accuracies/args.repeat).tolist()
 
     # save the results as json file
     json_data = {
         'arguments': {
             'dataset' : args.dataset,
             'epsilon' : args.epsilon,
-            'network' : args.network,
-            'k_list' : args.k_list,
-            'num_training' : args.num_training
+            'alpha' : args.alpha,
+            'beta' : args.beta,
         },
         'results': {
-            # indexes
-            'dynamic_feature_indexes_per_epoch': dynamic_feature_indexes_per_epoch,
-            'QS_feature_indexes_per_epoch': QS_feature_indexes_per_epoch,
-            # sparse neuron network data
-            'avr_loss_per_epoch': avr_loss_per_epoch,
-            'avr_valid_accuracy_per_epoch': avr_valid_accuracy_per_epoch,
+            'avr_losses': avr_losses,
+            'avr_valid_accuracies': avr_valid_accuracies,
             'avr_test_accuracy': avr_test_accuracy,
-            # dynamic method
-            'avr_dynamic_importance_scores': avr_dynamic_importance_scores,
-            'avr_dynamic_svm_accuracies': avr_dynamic_svm_accuracies,
-            'avr_dynamic_imp_per_epoch': avr_dynamic_imp_per_epoch,
-            # static method
-            'avr_static_importance_scores': avr_static_importance_scores,
-            'avr_static_svm_accuracies': avr_static_svm_accuracies,
-            # QS method
-            'avr_QS_importance_scores': avr_QS_importance_scores,
-            'avr_QS_svm_accuracies': avr_QS_svm_accuracies,
-            'avr_QS_imp_per_epoch': avr_QS_imp_per_epoch
-
+            'avr_svm_accuracies': avr_svm_accuracies,
+            'svm_accuracies_per_run': svm_accuracies_per_run
         }
     }
     json_object = json.dumps(json_data)

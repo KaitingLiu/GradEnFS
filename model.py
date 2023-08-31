@@ -20,9 +20,6 @@ class MLP(nn.Module):
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=1)
 
-        # regist hooks to track the gradient flow
-        # self.relu.register_full_backward_hook(self.hook_fn)
-
         # save data
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -34,6 +31,3 @@ class MLP(nn.Module):
         h3 = self.relu(self.bn3(self.fc3(h2)))
         y_hat = self.softmax(self.fc4(h3))
         return y_hat
-
-    # def hook_fn(self, module, grad_input, grad_output):
-    #     self.ac_grad.append(torch.mean(torch.abs(grad_output[0]), dim=0))
