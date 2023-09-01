@@ -16,7 +16,6 @@ import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import json
 import numpy as np
-import math
 
 from svm_model import SVM_Model
 
@@ -119,7 +118,7 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, grad
             gradenfs.update_mask(epoch_idx, batch_idx)
             gradenfs.apply_mask()
 
-        # save loss and validation accuracy after each epoch
+        # save the loss and validation accuracy after each epoch
         losses.append(loss.detach().item())
         model.eval()
         valid_accuracy = evaluate_mlp(model, validation_loader, args.device, args.num_validation)
@@ -147,11 +146,14 @@ def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model
     # start training
     losses, valid_accuracies = train(mlp, train_loader, validation_loader, optimizer, loss_function, gradenfs, args, logger)
 
-    # get the test accuracy of the final network, svm accuracies for all method
+    # get the test accuracy of the final trained mlp
     test_accuracy = evaluate_mlp(mlp, test_loader, args.device, args.num_testing)
     logger.info('Test accuracy of the trained sparse neural network: {}'.format(test_accuracy))
-    logger.info('SVM accuracies evaluated on the feature selected by GradEnFS:')
+    
+    # select the features by GradEnFS method
     selected_feature_indexes = gradenfs.select_features()
+    # use svm accuracies to evaluate the quality of the selected feature subset
+    logger.info('SVM accuracies evaluated on the feature selected by GradEnFS:')
     svm_accuracies = svm_acc(svm_model, args.k_list, selected_feature_indexes, logger)
 
     # return the training's result for this run
@@ -183,7 +185,7 @@ def main():
     args.num_training = x_train.shape[0]
     args.num_validation = x_valid.shape[0]
     args.num_testing = x_test.shape[0]
-    args.batch = math.ceil(args.num_training / args.training_batch_size)
+    args.batch = len(train_loader)
 
     # make dir for logs, results and models and get prefix
     args.logs_name, args.results_name = create_dir(args)
