@@ -114,9 +114,10 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, grad
             # update the neuron importance score
             gradenfs.update_importance_scores(grad)
 
-            # update the mask and then update the network topology
-            gradenfs.update_mask(epoch_idx, batch_idx)
-            gradenfs.apply_mask()
+            # update the mask and then update the network topology after every batch 
+            if args.batch_update:
+                gradenfs.update_mask(batch_idx, epoch_idx)
+                gradenfs.apply_mask()
 
         # save the loss and validation accuracy after each epoch
         losses.append(loss.detach().item())
@@ -127,6 +128,11 @@ def train(model, train_loader, validation_loader, optimizer, loss_function, grad
         info = 'Epoch {} Loss: {:.6f} Validation Accuracy: {:.6f}'.format(
             epoch_idx, losses[-1], valid_accuracy)
         logger.info(info)
+
+        # update the mask and then update the network topology after every epoch if it's not batch update 
+        if not args.batch_update:
+            gradenfs.update_mask(batch_idx, epoch_idx)
+            gradenfs.apply_mask()
 
     # end training and return recorded data
     return losses, valid_accuracies
@@ -149,7 +155,7 @@ def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model
     # get the test accuracy of the final trained mlp
     test_accuracy = evaluate_mlp(mlp, test_loader, args.device, args.num_testing)
     logger.info('Test accuracy of the trained sparse neural network: {}'.format(test_accuracy))
-    
+
     # select the features by GradEnFS method
     selected_feature_indexes = gradenfs.select_features()
     # use svm accuracies to evaluate the quality of the selected feature subset
@@ -157,7 +163,7 @@ def repeat(train_loader, validation_loader, test_loader, args, logger, svm_model
     svm_accuracies = svm_acc(svm_model, args.k_list, selected_feature_indexes, logger)
 
     # return the training's result for this run
-    return losses, valid_accuracies, test_accuracy, svm_accuracies
+    return losses, valid_accuracies, test_accuracy, svm_accuracies, selected_feature_indexes
 
 # main function, we repeat training several times here to get average results and save it
 def main():
@@ -203,6 +209,7 @@ def main():
     avr_test_accuracy = 0
     avr_svm_accuracies = np.zeros(len(args.k_list))
     svm_accuracies_per_run = []
+    features_subset_per_run = []
 
     
     # repeat the training process for certain times to get average results
@@ -215,7 +222,7 @@ def main():
             seed_everything(args.seeds[repeat_idx])
         
         # start the training
-        losses, valid_accuracies, test_accuracy, svm_accuracies = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model)
+        losses, valid_accuracies, test_accuracy, svm_accuracies, features_subset = repeat(train_loader, validation_loader, test_loader, args, logger, svm_model)
 
         # record the results for every single run
         avr_losses += np.array(losses)
@@ -223,6 +230,7 @@ def main():
         avr_test_accuracy += test_accuracy
         avr_svm_accuracies += np.array(svm_accuracies)
         svm_accuracies_per_run.append(svm_accuracies)
+        features_subset_per_run.append(features_subset)
 
     # calculate the average results after all experimental runs end
     avr_losses = (avr_losses/args.repeat).tolist()
@@ -243,7 +251,8 @@ def main():
             'avr_valid_accuracies': avr_valid_accuracies,
             'avr_test_accuracy': avr_test_accuracy,
             'avr_svm_accuracies': avr_svm_accuracies,
-            'svm_accuracies_per_run': svm_accuracies_per_run
+            'svm_accuracies_per_run': svm_accuracies_per_run,
+            'features_subset_per_run': features_subset_per_run
         }
     }
     json_object = json.dumps(json_data)

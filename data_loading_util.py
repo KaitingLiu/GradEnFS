@@ -8,6 +8,7 @@ from sklearn.utils import shuffle
 import urllib.request as urllib2
 import sys
 import math
+from sklearn.preprocessing import StandardScaler
 
 # class help to make dataloader
 class Dataset(torch.utils.data.Dataset):
@@ -72,12 +73,11 @@ def load_madelon():
     test_y = np.loadtxt(urllib2.urlopen(test_resp_url)).astype('int')
 
     # normalize data
-    xTrainMean = np.mean(train_x, axis=0)
-    xTrainStd = np.std(train_x, axis=0)
-    train_x = (train_x - xTrainMean) / xTrainStd
-    xTestMean = np.mean(test_x, axis=0)
-    xTestStd = np.std(test_x, axis=0)
-    test_x = (test_x - xTestMean) / xTestStd
+    # Create a StandardScaler object
+    scaler = StandardScaler()
+    # Fit and transform the data
+    train_x = scaler.fit_transform(train_x)
+    test_x = scaler.fit_transform(test_x)
 
     # turn y's -1 label to 0
     train_y[train_y == -1] = 0
@@ -102,9 +102,10 @@ def load_mat(filename, num_datapoint, num_class):
 
     # normalize data
     x = x.astype('float32')
-    xMean = np.mean(x, axis=0)
-    xStd = np.std(x, axis=0)
-    x = (x - xMean) / xStd 
+    # Create a StandardScaler object
+    scaler = StandardScaler()
+    # Fit and transform the data
+    x = scaler.fit_transform(x)
 
     # turn the label to one-hot
     unique_classes = np.unique(y)

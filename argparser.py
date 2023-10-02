@@ -22,6 +22,7 @@ def get_parser():
     parser.add_argument('--alpha', type=float, default=0.3, help='Prunning rate during the topology update (default: 0.3).')
     parser.add_argument('--beta', type=float, default=0.7, help='Hyperparameter for calculating the neuron importance metric (default: 0.7).')
     parser.add_argument('--k_list', type=int, action='store', nargs='*', default=[20], help='The list of the numbers of the selected features.')
+    parser.add_argument('--batch_update', action='store_true', help='Choose to update topology after every batch.')
     
     # experiment setting
     parser.add_argument('--use_seeds', action='store_true', help='Choose to control random seeds for initializing network or not.')

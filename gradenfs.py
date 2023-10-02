@@ -18,6 +18,7 @@ class GradEnFS():
         # the training setting
         self.epoch = args.epoch
         self.batch = args.batch # how many training batch per epoch
+        self.batch_update = args.batch_update
 
         # the network we chose, the variable for generating a sparse neural network
         self.network = args.network # dense or sparse
@@ -68,11 +69,13 @@ class GradEnFS():
         self.logger.info(info)
 
     # function for updating masks
-    def update_mask(self, epoch_idx, batch_idx):
+    def update_mask(self, batch_idx, epoch_idx):
         if self.network == 'sparse':
             self.magnitude_removal()
-            if epoch_idx == self.epoch and batch_idx == self.batch:
-                self.logger.info('Stop random regrow in the last batch {} of the last epoch {}'.format(epoch_idx, batch_idx))
+            if self.batch_update and epoch_idx == self.epoch and batch_idx == self.batch:
+                self.logger.info('Stop random regrow in the last update interval epoch {} batch {}'.format(epoch_idx, batch_idx))
+            elif not self.batch_update and epoch_idx == self.epoch:
+                self.logger.info('Stop random regrow in the last update interval epoch {}'.format(epoch_idx))
             else:
                 self.random_addition()
 
