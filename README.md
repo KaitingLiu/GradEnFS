@@ -6,11 +6,15 @@ GradEnFS is a novel resource-efficient supervised feature selection algorithm ba
 
 ## Method
 ![Illustration of the Proposed Method](method.png)
+
 ## Usage
+To initiate the program, please use the command "python main.py" along with the hyperparameters of your choice.
+There are some main arguments:
+--dataset(string): the dataset to be used.
+--epsilon(int): hyperparameters for controlling the sparsity level.
+--alpha(float): pruning rate during the topology update.
+--beta(float): hyperparameter for the neuron importance metric.
+To view all available hyperparameters and options, you can utilize the "python main.py --help" command.
+
 ## Results
 
-
-
-To initiate the program, please use the command "python main.py" along with the hyperparameters of your choice.
-
-To view all available hyperparameters and options, you can utilize the "python main.py --help" command.
